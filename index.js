@@ -1,17 +1,53 @@
-import { exec } from 'child_process';
-import fs from 'fs/promises'; // Import fs using the promise-based API
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
 
-export default async (app) => {
+// Get the current directory name
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables from .env file
+dotenv.config();
+
+// Read the private key from the specified path
+const privateKey = fs.readFileSync(path.join(__dirname, 'config', 'rettlbot.2024-10-01.private-key.pem'), 'utf8'); // Update with your actual private key filename
+
+/**
+ * This is the main entrypoint to your Probot app
+ * @param {import('probot').Probot} app
+ */
+export default (app) => {
   app.log.info("Yay, the app was loaded!");
 
-  app.on("issue_comment", async (context) => {
-    const commentBody = context.payload.comment.body;
-    const hasSlash = commentBody.includes("/");
-    const matches = commentBody.match(/\/([^ ]+)/);
-    
-    if (hasSlash && matches) {
-      const command = matches[1];
-      await processCommand(context, command);
+  // Function to respond to comments in discussions
+  const respondToDiscussionComment = async (context, discussionId, body) => {
+    const query = `
+      mutation ($discussionId: ID!, $body: String!) {
+        addDiscussionComment(input: {discussionId: $discussionId, body: $body}) {
+          comment {
+            url
+          }
+        }
+      }
+    `;
+
+    await context.octokit.graphql(query, {
+      discussionId: discussionId,
+      body: body,
+    });
+
+    app.log.info("Responded to discussion comment.");
+  };
+
+  // Listen for discussion comments
+  app.on("discussion_comment.created", async (context) => {
+    const commentBody = context.payload.comment.body; // Get the comment body
+    const discussionId = context.payload.discussion.node_id; // Get the discussion node ID
+
+    // Check if the comment includes a question mark
+    if (commentBody.includes("?")) {
+      await respondToDiscussionComment(context, discussionId, "Hi"); 
     }
   });
 
@@ -20,53 +56,4 @@ export default async (app) => {
 
   // To get your app running against GitHub, see:
   // https://probot.github.io/docs/development/
-
-  let responseObj = null;
-
-  try {
-    const data = await fs.readFile('responses.json', 'utf8');
-    responseObj = JSON.parse(data);
-  } catch (err) {
-    console.error('Error reading file:', err);
-  }
-
-  function getResponse(key) {
-    return new Promise((resolve, reject) => {
-      if (responseObj) {
-        const response = responseObj.responses[key];
-        if (response) {
-          const replacedResponse = response.replace(/\{\{repoURL\}\}/g, responseObj.repoURL);
-          resolve(replacedResponse);
-        } else {
-          resolve("Response not found.");
-        }
-      } else {
-        reject(new Error("Response object not initialized."));
-      }
-    });
-  }
-
-  async function processCommand(context, command){
-    const repoDetails = context.repo();
-    const issueNumber = context.payload.issue.number; // Extract issue number
-    const result = await commandMatcher(context, command, issueNumber); // Pass issue number to commandMatcher
-    await context.octokit.issues.createComment({
-      ...repoDetails,
-      issue_number: issueNumber,
-      body: result
-    });
-  }
-
-  async function commandMatcher(context, command, issueNumber){
-    let response = "That's not quite right";
-    if(command == "newUser") {
-      response = await getResponse("newUserResponse");
-    } else if(command == "drop") {
-      response = await getResponse("taskAbandoned");
-    } else {
-      response = await getResponse("repoURL");
-    }
-    //This is the code for all the 
-    return response;
-  }
 };
