@@ -18,18 +18,6 @@ def load_json() -> list[str]:
                     results.append(str(value))  
     return results
 
-def load_info(quest,task):
-    with open("/app/OSS-doorway/src/config/response.json", "r", encoding="utf-8") as file:
-        data = json.load(file)
-    return data[quest][task]
-
-def load_hints(quest,task):
-    with open("/app/OSS-doorway/src/config/hint_config.json", "r", encoding="utf-8") as file:
-        data = json.load(file)
-    task_hints = data.get(quest, {}).get(task, {})
-    hints = [task_hints[hint]["content"] for hint in ["H1", "H2"] if hint in task_hints]
-    return hints
-    
 class RAG(dspy.Module):
     def __init__(self):
         self.respond = dspy.Predict('context, question -> response')
@@ -37,14 +25,10 @@ class RAG(dspy.Module):
     def forward(self, question):
         return self.respond(context=load_json(),question=question)
 
-def ragAnswer(quest,task):
-    prompt = load_info(quest,task)
-    hints = load_hints(quest,task)
-    quest = f"""Based on this task and these hints create one new
-    hint and return just that hint,task:{prompt},hints {hints}"""
+def ragAnswer(input):
+    quest = f"""Based on the information answer this question:{input}"""
     rep = RAG()
     return rep(question=quest).response
-    
 
 if __name__ == '__main__':
-    print(ragAnswer(sys.argv[1],sys.argv[2]))
+    print(ragAnswer(sys.argv[1]))

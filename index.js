@@ -2,11 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
-
+import LLM from 'llm.js';
 // Get the current directory name
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
+const LLM_instance = new LLM();
 // Load environment variables from .env file
 dotenv.config();
 
