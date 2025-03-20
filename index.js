@@ -21,7 +21,7 @@ export default (app) => {
   app.log.info("Yay, the app was loaded!");
 
   // Function to respond to comments in discussions
-  const respondToDiscussionComment = async (context, discussionId, body) => {
+  const respondToDiscussionComment = async (commentBody,context, discussionId, body) => {
     const query = `
       mutation ($discussionId: ID!, $body: String!) {
         addDiscussionComment(input: {discussionId: $discussionId, body: $body}) {
@@ -31,10 +31,10 @@ export default (app) => {
         }
       }
     `;
-
+    response = await LLM_instance.answerQuestion(commentBody);
     await context.octokit.graphql(query, {
       discussionId: discussionId,
-      body: body,
+      body: response,
     });
 
     app.log.info("Responded to discussion comment.");
@@ -47,7 +47,7 @@ export default (app) => {
 
     // Check if the comment includes a question mark
     if (commentBody.includes("?")) {
-      await respondToDiscussionComment(context, discussionId, "Hi"); 
+      await respondToDiscussionComment(commentBody,context, discussionId, "Hi"); 
     }
   });
 
