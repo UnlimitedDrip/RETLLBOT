@@ -1,4 +1,5 @@
 import sys
+import os
 import dspy
 import json
 from dotenv import load_dotenv
@@ -8,7 +9,8 @@ gpt = dspy.LM('openai/gpt-4o-mini')
 dspy.settings.configure(lm=gpt)
 
 def load_json() -> list[str]:
-    with open("/app/RETLLBOT/q_data.json", "r", encoding="utf-8") as file:
+    file_path = os.path.join(os.path.dirname(__file__), "q_data.json") 
+    with open(file_path, "r", encoding="utf-8") as file:
         data = json.load(file)  
     results = []
     for entry in data:  
